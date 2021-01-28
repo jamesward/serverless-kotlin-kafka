@@ -23,7 +23,6 @@ dependencies {
     implementation("org.springframework.kafka:spring-kafka")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
-
     testImplementation("org.testcontainers:kafka:1.15.1")
 }
 
