@@ -17,6 +17,9 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2")
+    implementation("io.confluent:kafka-json-schema-serializer:6.0.0")
+    // transitive from 👆
+    //implementation("com.github.everit-org.json-schema:org.everit.json.schema:1.12.1")
 
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-webflux")

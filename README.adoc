@@ -1,0 +1,38 @@
+== Serverless Kotlin Kafka
+
+== ws-to-kafka
+
+=== Dev (TestContainer Kafka):
+
+[source,shell script]
+----
+docker-compose up -d # <1>
+./gradlew :ws-to-kafka:bootRun
+----
+<1> start docker containers with ZK, AK, and SR
+<2> run the app
+
+=== Prod (External Kafka):
+
+[source,shell script]
+----
+export BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
+export SASL_JAAS_CONFIG_PROPERTY_FORMAT="org.apache.kafka.common.security.plain.PlainLoginModule required username='YOUR_KEY' password='YOUR_SECRET';"
+
+./gradlew :ws-to-kafka:run
+----
+
+.consume messaged with schema
+[source,shell script]
+----
+docker exec -it schema-registry /usr/bin/kafka-json-schema-console-consumer --topic mytopic --bootstrap-server broker:9092
+----
+
+== todo
+
+* schema stuff
+** json schema used
+* parse tags
+* ksqldb stateful (total favorites)
+* ksql transform (language groupings)
+* web event consumer (websocket stream + pull query)

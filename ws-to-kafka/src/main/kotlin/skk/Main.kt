@@ -1,10 +1,14 @@
 package skk
 
+import com.fasterxml.jackson.annotation.JsonProperty
+import com.fasterxml.jackson.databind.ObjectMapper
 import com.fasterxml.jackson.databind.PropertyNamingStrategy
+import com.fasterxml.jackson.module.kotlin.KotlinModule
 import com.fasterxml.jackson.module.kotlin.jacksonObjectMapper
 import com.fasterxml.jackson.module.kotlin.readValue
 import kotlinx.coroutines.runBlocking
 import org.apache.kafka.clients.admin.NewTopic
+import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.CommandLineRunner
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
@@ -16,50 +20,72 @@ import org.springframework.web.reactive.socket.WebSocketMessage
 import org.springframework.web.reactive.socket.client.ReactorNettyWebSocketClient
 import java.net.URI
 
-// todo: avro, json schema, or protobuf
+// JSON-Schema will generated from POKO in SR by Serializer
 data class Question(
-    val url: String,
-    val title: String,
-    val favoriteCount: Int,
-    val viewCount: Int,
-    val tags: List<String>, // todo: deserialize ["tag1|tag2"]
-    val body: String
+  val url: String,
+  val title: String,
+  @JsonProperty("favorite_count") val favoriteCount: Int,
+  @JsonProperty("view_count") val viewCount: Int,
+  var tags: List<String>,
+  var body: String
 )
 
-// todo: configurable topic name
 @Configuration
 class KafkaConfig {
 
-    @Bean
-    fun newTopic(): NewTopic? {
-        return TopicBuilder.name("mytopic").partitions(8).replicas(3).build()
-    }
+  @Value("\${serverless.kotlin.kafka.mytopic.replicas:1}")
+  var topicReplicas: Int = 0
+
+  @Value("\${serverless.kotlin.kafka.mytopic.partitions:3}")
+  var topicPartitions: Int = 0
+
+  @Value("\${serverless.kotlin.kafka.mytopic.name}")
+  lateinit var topicName: String;
+
+  @Bean
+  fun newTopic(): NewTopic {
+    return TopicBuilder.name(topicName).partitions(topicPartitions).replicas(topicReplicas).build()
+  }
 
 }
 
 @SpringBootApplication
-class Main(val kafkaTemplate: KafkaTemplate<String, String>) : CommandLineRunner {
+class Main(
+  @Value("\${serverless.kotlin.kafka.so-to-ws.url}") val soToWsUrl: String,
+  @Value("\${serverless.kotlin.kafka.mytopic.name}") val topicName: String,
+  val kafkaTemplate: KafkaTemplate<String, Question>,
+) : CommandLineRunner {
 
-    val wsClient = ReactorNettyWebSocketClient()
-    val mapper = jacksonObjectMapper().setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
+  val wsClient = ReactorNettyWebSocketClient()
+  val mapper: ObjectMapper = jacksonObjectMapper()
+    .registerModule(KotlinModule())
+    .setPropertyNamingStrategy(PropertyNamingStrategy.SNAKE_CASE)
 
-    override fun run(vararg args: String?): Unit = runBlocking {
-        val uri = URI("wss://stackoverflow-to-ws-u7lmfx4izq-uc.a.run.app/questions")
+  override fun run(vararg args: String?): Unit = runBlocking {
+    val uri = URI(soToWsUrl)
 
-        val send: (WebSocketMessage) -> Unit =  { message ->
-            val json = message.payloadAsText
-            val question = mapper.readValue<Question>(json)
-            println(question.url)
-            kafkaTemplate.send("mytopic", question.url, json)
-        }
+    val send: (WebSocketMessage) -> Unit = { message ->
 
-        wsClient.execute(uri) { session ->
-            session.receive().doOnNext(send).then()
-        }.block()
+      // parsing string to Kotlin object
+      val question = mapper.readValue<Question>(message.payloadAsText)
+      println(question.url)
+
+      // optional escaping html so it won't break CLI tools
+      question.body = question.body.escapeHTML()
+      // parsing tags separated by `|`
+      question.tags = question.tags.flatMap { it.split("|") }
+
+      //sending to Kafka topic
+      kafkaTemplate.send(topicName, question.url, question)
     }
+
+    wsClient.execute(uri) { session ->
+      session.receive().doOnNext(send).then()
+    }.block()
+  }
 
 }
 
 fun main(args: Array<String>) {
-    runApplication<Main>(*args)
+  runApplication<Main>(*args)
 }
