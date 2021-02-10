@@ -6,11 +6,15 @@
 
 [source,shell script]
 ----
-docker-compose up -d # <1>
 ./gradlew :ws-to-kafka:bootRun
 ----
-<1> start docker containers with ZK, AK, and SR
-<2> run the app
+
+.consume messaged with schema
+[source,shell script]
+----
+docker exec -it schema-registry /usr/bin/kafka-json-schema-console-consumer --topic mytopic --bootstrap-server broker:9092
+----
+
 
 === Prod (External Kafka):
 
@@ -20,12 +24,6 @@ export BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
 export SASL_JAAS_CONFIG_PROPERTY_FORMAT="org.apache.kafka.common.security.plain.PlainLoginModule required username='YOUR_KEY' password='YOUR_SECRET';"
 
 ./gradlew :ws-to-kafka:run
-----
-
-.consume messaged with schema
-[source,shell script]
-----
-docker exec -it schema-registry /usr/bin/kafka-json-schema-console-consumer --topic mytopic --bootstrap-server broker:9092
 ----
 
 == todo
