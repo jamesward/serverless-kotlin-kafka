@@ -92,7 +92,7 @@ class Main(
 
       // parsing string to Kotlin object
       val question = mapper.readValue<Question>(message.payloadAsText)
-      println(question.tags)
+      println(question.url)
 
       //sending to Kafka topic
       kafkaTemplate.send(kafkaTopicConfig.name, question.url, question)
