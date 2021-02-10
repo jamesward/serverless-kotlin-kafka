@@ -79,7 +79,6 @@ class Main(
   val kafkaTemplate: KafkaTemplate<String, Question>,
 ) : CommandLineRunner {
 
-
   val wsClient = ReactorNettyWebSocketClient()
   val mapper: ObjectMapper = jacksonObjectMapper()
     .registerModule(KotlinModule())
