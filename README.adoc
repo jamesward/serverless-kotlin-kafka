@@ -21,7 +21,11 @@ docker exec -it schema-registry /usr/bin/kafka-json-schema-console-consumer --to
 [source,shell script]
 ----
 export BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
-export SASL_JAAS_CONFIG_PROPERTY_FORMAT="org.apache.kafka.common.security.plain.PlainLoginModule required username='YOUR_KEY' password='YOUR_SECRET';"
+export CCLOUD_KEY=YOUR_CCLOUD_KEY
+export CCLOUD_PASSWORD=YOUR_CCLOUD_PASSWORD
+export SCHEMA_REGISTRY_URL=YOUR_CCLOUD_SCHEMA_REGISTRY_URL
+export SCHEMA_REGISTRY_KEY=YOUR_SCHEMA_REGISTRY_USERNAME
+export SCHEMA_REGISTRY_PASSWORD=YOUR_SCHEMA_REGISTRY_PASSWORD
 
 ./gradlew :ws-to-kafka:run
 ----
