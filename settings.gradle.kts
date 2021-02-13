@@ -1,3 +1,3 @@
 rootProject.name = "serverless_kotlin_kafka"
 
-include("ws-to-kafka")
+include("ws-to-kafka", "web-ui")

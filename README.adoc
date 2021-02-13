@@ -30,6 +30,23 @@ export SCHEMA_REGISTRY_PASSWORD=YOUR_SCHEMA_REGISTRY_PASSWORD
 ./gradlew :ws-to-kafka:run
 ----
 
+
+== web-ui
+
+=== Dev (TestContainer Kafka):
+
+[source,shell script]
+----
+./gradlew :web-ui:bootRun
+----
+
+.send a test message
+[source,shell script]
+----
+docker exec -it kafka bash -c "echo \"foo:bar\" | kafka-console-producer --topic myTopic --broker-list localhost:9092 --property parse.key=true --property key.separator=:"
+----
+
+
 == todo
 
 * schema stuff

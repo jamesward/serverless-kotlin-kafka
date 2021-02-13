@@ -6,6 +6,7 @@ plugins {
 allprojects {
   repositories {
     mavenCentral()
+    jcenter()
     maven(url = "https://packages.confluent.io/maven")
     maven(url = "https://repository.mulesoft.org/nexus/content/repositories/public/")
   }
