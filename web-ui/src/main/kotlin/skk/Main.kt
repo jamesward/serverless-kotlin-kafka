@@ -111,9 +111,6 @@ object Html {
         TEMPLATE(consumer).visit(block)
     }
 
-
-
-
     val indexHTML: HTML.() -> Unit = {
         head {
             link("/webjars/bootstrap/4.5.3/css/bootstrap.min.css", LinkRel.stylesheet)
