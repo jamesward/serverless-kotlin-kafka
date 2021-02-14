@@ -39,5 +39,5 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     dependsOn("testClasses")
-    classpath = sourceSets["test"].runtimeClasspath
+    classpath += sourceSets["test"].runtimeClasspath
 }

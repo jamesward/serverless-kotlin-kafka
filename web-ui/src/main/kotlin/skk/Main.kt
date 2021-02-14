@@ -4,6 +4,8 @@ import kotlinx.html.*
 import kotlinx.html.dom.createHTMLDocument
 import kotlinx.html.dom.serialize
 import org.apache.kafka.clients.consumer.ConsumerConfig
+import org.apache.kafka.common.serialization.IntegerDeserializer
+import org.apache.kafka.common.serialization.StringDeserializer
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
@@ -31,22 +33,60 @@ class WebApp {
 }
 
 
+data class BootstrapServers(val stringList: String)
+
+
 @Configuration
 class WebSocketConfig {
 
     @Bean
-    fun simpleUrlHandlerMapping(wsh: WebSocketHandler): SimpleUrlHandlerMapping {
-        return SimpleUrlHandlerMapping(mapOf("/websocket" to wsh), 10)
+    fun simpleUrlHandlerMapping(bootstrapServers: BootstrapServers): SimpleUrlHandlerMapping {
+        return SimpleUrlHandlerMapping(mapOf(
+            "/total" to totalFavorites(bootstrapServers),
+            "/langs" to langs(bootstrapServers),
+        ), 10)
     }
 
-    @Bean
-    fun webSocketHandler(receiverOptions: ReceiverOptions<String, String>): WebSocketHandler {
-        return WebSocketHandler { session: WebSocketSession ->
-            val receiverOptionsWithId = receiverOptions.consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id).subscription(listOf("myTopic"))
+    fun totalFavorites(bootstrapServers: BootstrapServers): WebSocketHandler {
 
-            val kafkaMessages = KafkaReceiver.create(receiverOptionsWithId).receive()
+        val props = mapOf(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers.stringList,
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.GROUP_ID_CONFIG to "group",
+        )
+
+        return WebSocketHandler { session: WebSocketSession ->
+            val receiverOptions = ReceiverOptions.create<String, String>(props)
+                .consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id)
+                .subscription(listOf("total"))
+
+            val kafkaMessages = KafkaReceiver.create(receiverOptions).receive()
 
             val webSocketMessages = kafkaMessages.map { session.textMessage(it.value()) }
+
+            session.send(webSocketMessages)
+        }
+    }
+
+
+    fun langs(bootstrapServers: BootstrapServers): WebSocketHandler {
+
+        val props = mapOf(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers.stringList,
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.GROUP_ID_CONFIG to "group",
+        )
+
+        return WebSocketHandler { session: WebSocketSession ->
+            val receiverOptions = ReceiverOptions.create<String, String>(props)
+                .consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id)
+                .subscription(listOf("langs"))
+
+            val kafkaMessages = KafkaReceiver.create(receiverOptions).receive()
+
+            val webSocketMessages = kafkaMessages.map { session.textMessage("${it.key()}:${it.value()}") }
 
             session.send(webSocketMessages)
         }
@@ -61,6 +101,18 @@ class WebSocketConfig {
 
 
 object Html {
+
+    class TEMPLATE(consumer: TagConsumer<*>) :
+        HTMLTag("template", consumer, emptyMap(),
+            inlineTag = true,
+            emptyTag = false), HtmlInlineTag
+
+    fun FlowContent.template(block: TEMPLATE.() -> Unit = {}) {
+        TEMPLATE(consumer).visit(block)
+    }
+
+
+
 
     val indexHTML: HTML.() -> Unit = {
         head {
@@ -78,7 +130,13 @@ object Html {
             }
 
             div("container-fluid") {
-                +"hello, world"
+                template {
+                    id = "totalTemplate"
+                    +"Total Favorites: {{total}}"
+                }
+                div {
+                    id = "total"
+                }
             }
         }
     }

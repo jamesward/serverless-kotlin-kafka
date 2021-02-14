@@ -28,19 +28,13 @@ class TestKafkaContainer : KafkaContainer(DockerImageName.parse("confluentinc/cp
 }
 
 
+
 @Configuration
 class TestKafkaReceiverOptions {
 
     @Bean
-    fun receiverOptions(testKafkaContainer: TestKafkaContainer): ReceiverOptions<String, String> {
-        val props = mapOf(
-            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to testKafkaContainer.bootstrapServers,
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.GROUP_ID_CONFIG to "test-group",
-        )
-
-        return ReceiverOptions.create(props)
+    fun bootstrapServers(testKafkaContainer: TestKafkaContainer): BootstrapServers {
+        return BootstrapServers(testKafkaContainer.bootstrapServers)
     }
 
 }
