@@ -11,6 +11,7 @@ import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
 import org.springframework.web.bind.annotation.GetMapping
+import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
 import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
@@ -30,6 +31,11 @@ class WebApp {
         return Html.index.serialize(true)
     }
 
+    @GetMapping("/{name}")
+    fun lang(@PathVariable name: String): String {
+        return Html.lang(name).serialize(true)
+    }
+
 }
 
 
@@ -44,7 +50,8 @@ class WebSocketConfig {
         return SimpleUrlHandlerMapping(mapOf(
             "/total" to totalFavorites(bootstrapServers),
             "/langs" to langs(bootstrapServers),
-        ), 10)
+            "/questions" to questions(bootstrapServers),
+        ), 0)
     }
 
     fun totalFavorites(bootstrapServers: BootstrapServers): WebSocketHandler {
@@ -92,6 +99,29 @@ class WebSocketConfig {
         }
     }
 
+
+    fun questions(bootstrapServers: BootstrapServers): WebSocketHandler {
+
+        val props = mapOf(
+            ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers.stringList,
+            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
+            ConsumerConfig.GROUP_ID_CONFIG to "group",
+        )
+
+        return WebSocketHandler { session: WebSocketSession ->
+            val receiverOptions = ReceiverOptions.create<String, String>(props)
+                .consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id)
+                .subscription(listOf("questions"))
+
+            val kafkaMessages = KafkaReceiver.create(receiverOptions).receive()
+
+            val webSocketMessages = kafkaMessages.map { session.textMessage(it.value()) }
+
+            session.send(webSocketMessages)
+        }
+    }
+
     @Bean
     fun webSocketHandlerAdapter(): WebSocketHandlerAdapter {
         return WebSocketHandlerAdapter()
@@ -111,12 +141,16 @@ object Html {
         TEMPLATE(consumer).visit(block)
     }
 
-    val indexHTML: HTML.() -> Unit = {
+    fun TEMPLATE.li(classes : String? = null, block : LI.() -> Unit = {}) {
+        LI(attributesMapOf("class", classes), consumer).visit(block)
+    }
+
+    fun page(js: String, content: FlowContent.() -> Unit = {}): HTML.() -> Unit = {
         head {
             link("/webjars/bootstrap/4.5.3/css/bootstrap.min.css", LinkRel.stylesheet)
             link("/assets/index.css", LinkRel.stylesheet)
             script(ScriptType.textJavaScript) {
-                src = "/assets/index.js"
+                src = "/assets/$js"
             }
         }
         body {
@@ -127,18 +161,60 @@ object Html {
             }
 
             div("container-fluid") {
-                template {
-                    id = "totalTemplate"
-                    +"Total Favorites: {{total}}"
-                }
-                div {
-                    id = "total"
+                content()
+            }
+        }
+    }
+
+    val indexHTML = page("index.js") {
+        template {
+            id = "total-template"
+            +"Total Favorites: {{total}}"
+        }
+
+        div {
+            id = "total"
+        }
+
+        ul {
+            id = "recent-questions"
+
+            template {
+                id = "recent-questions-template"
+
+                li {
+                    id = "lang-{{lang}}"
+
+                    a("{{lang}}") {
+                        +"{{lang}} = {{num}}"
+                    }
                 }
             }
         }
     }
 
     val index: Document = createHTMLDocument().html(block = indexHTML)
+
+    fun langHTML(name: String) = page("lang.js") {
+        +"Questions For `$name`"
+
+        ul {
+            id = "questions"
+
+            template {
+                id = "question-template"
+
+                li {
+                    a("{{url}}") {
+                        +"{{title}}"
+                    }
+                    +" (favorites: {{favorite_count}}, views: {{view_count}})"
+                }
+            }
+        }
+    }
+
+    fun lang(name: String): Document = createHTMLDocument().html(block = langHTML(name))
 
 }
 
