@@ -87,8 +87,6 @@ class WebSocketConfig {
 
     @Bean
     fun simpleUrlHandlerMapping(kafkaConfig: KafkaConfig): SimpleUrlHandlerMapping {
-        println(kafkaConfig.props)
-
         return SimpleUrlHandlerMapping(mapOf(
             "/total" to totalFavorites(kafkaConfig),
             "/langs" to langs(kafkaConfig),
