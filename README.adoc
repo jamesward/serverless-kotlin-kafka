@@ -47,6 +47,17 @@ docker exec -it kafka bash -c "echo \"567\" | kafka-console-producer --topic tot
 docker exec -it kafka bash -c "echo \"java:3\" | kafka-console-producer --topic langs --broker-list localhost:9092 --property parse.key=true --property key.separator=:"
 ----
 
+=== Prod (External Kafka):
+
+[source,shell script]
+----
+export KAKFA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
+export KAFKA_USERNAME=YOUR_CCLOUD_KEY
+export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
+
+./gradlew :web-ui:run
+----
+
 
 == todo
 

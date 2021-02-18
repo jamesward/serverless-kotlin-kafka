@@ -41,3 +41,7 @@ tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     dependsOn("testClasses")
     classpath += sourceSets["test"].runtimeClasspath
 }
+
+application {
+    mainClass.set("skk.MainKt")
+}
