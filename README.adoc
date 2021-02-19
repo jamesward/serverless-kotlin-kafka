@@ -20,7 +20,7 @@ docker exec -it schema-registry /usr/bin/kafka-json-schema-console-consumer --to
 
 [source,shell script]
 ----
-export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
+export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVERS
 export KAFKA_USERNAME=YOUR_CCLOUD_KEY
 export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
 export SCHEMA_REGISTRY_URL=YOUR_CCLOUD_SCHEMA_REGISTRY_URL
@@ -67,7 +67,7 @@ docker exec -it kafka bash -c "echo \"java:3\" | kafka-console-producer --topic 
 
 [source,shell script]
 ----
-export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVEERS
+export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVERS
 export KAFKA_USERNAME=YOUR_CCLOUD_KEY
 export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
 
