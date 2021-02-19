@@ -10,7 +10,7 @@ import javax.annotation.PreDestroy
 
 
 @Component
-class TestKafkaContainer : KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.3")) {
+class TestKafkaContainer : KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.1.0")) {
 
     init {
         withCreateContainerCmdModifier { it.withName("kafka") }

@@ -21,7 +21,7 @@ import javax.annotation.PreDestroy
 
 
 @Component
-class TestZookeeperContainer : GenericContainer<TestZookeeperContainer>(DockerImageName.parse("confluentinc/cp-zookeeper:6.0.0")) {
+class TestZookeeperContainer : GenericContainer<TestZookeeperContainer>(DockerImageName.parse("confluentinc/cp-zookeeper:6.1.0")) {
 
     val testNetwork: Network = Network.newNetwork()
 
@@ -40,7 +40,7 @@ class TestZookeeperContainer : GenericContainer<TestZookeeperContainer>(DockerIm
 }
 
 @Component
-class TestKafkaContainer(testZookeeperContainer: TestZookeeperContainer) : KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:5.4.3")) {
+class TestKafkaContainer(testZookeeperContainer: TestZookeeperContainer) : KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.1.0")) {
 
     init {
         withNetwork(testZookeeperContainer.network)
@@ -57,7 +57,7 @@ class TestKafkaContainer(testZookeeperContainer: TestZookeeperContainer) : Kafka
 }
 
 @Component
-class TestSchemaRegistryContainer(testKafkaContainer: TestKafkaContainer) : GenericContainer<TestZookeeperContainer>(DockerImageName.parse("confluentinc/cp-schema-registry:6.0.0")) {
+class TestSchemaRegistryContainer(testKafkaContainer: TestKafkaContainer) : GenericContainer<TestZookeeperContainer>(DockerImageName.parse("confluentinc/cp-schema-registry:6.1.0")) {
 
     init {
         withCreateContainerCmdModifier { it.withName("schema-registry") }
