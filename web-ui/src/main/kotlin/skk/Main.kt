@@ -65,9 +65,11 @@ class WebSocketConfig {
 
     @Bean
     fun simpleUrlHandlerMapping(reactorClient: ReactorClient): SimpleUrlHandlerMapping {
-        val sql = ("CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');")
+        val stackoverflowStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');"
+        reactorClient.executeStatement(stackoverflowStream).block()
 
-        reactorClient.executeStatement(sql).block()
+        val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
+        reactorClient.executeStatement(stackoverflowAllStream).block()
 
         return SimpleUrlHandlerMapping(mapOf(
             "/total" to totalFavorites(reactorClient),
@@ -78,8 +80,8 @@ class WebSocketConfig {
 
     fun totalFavorites(reactorClient: ReactorClient): WebSocketHandler {
         return WebSocketHandler { session: WebSocketSession ->
-            val kafkaMessages = reactorClient.streamQuery("select * from STACKOVERFLOW EMIT CHANGES;")
-            val webSocketMessages = kafkaMessages.map { session.textMessage(it.getInteger("FAVORITE_COUNT").toString()) }
+            val kafkaMessages = reactorClient.streamQuery("SELECT SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;", mapOf("auto.offset.reset" to "earliest"))
+            val webSocketMessages = kafkaMessages.map { session.textMessage(it.getLong("TOTAL").toString()) }
             session.send(webSocketMessages)
         }
     }
