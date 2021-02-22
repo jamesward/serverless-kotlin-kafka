@@ -23,6 +23,11 @@ dependencies {
     implementation("io.projectreactor.kafka:reactor-kafka")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
+    implementation("com.github.gAmUssA:reactor-ksqldb:e81f4a7fc0")
+    implementation("io.confluent.ksql:ksqldb-api-client:0.15.0") {
+        exclude("org.slf4j", "slf4j-log4j12")
+    }
+
     implementation("org.webjars:bootstrap:4.5.3")
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
 

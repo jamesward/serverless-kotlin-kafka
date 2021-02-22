@@ -1,20 +1,16 @@
 package skk
 
+import io.confluent.developer.ksqldb.reactor.ReactorClient
+import io.confluent.ksql.api.client.ClientOptions
 import kotlinx.html.*
 import kotlinx.html.dom.createHTMLDocument
 import kotlinx.html.dom.serialize
-import org.apache.kafka.clients.CommonClientConfigs
-import org.apache.kafka.clients.consumer.ConsumerConfig
-import org.apache.kafka.common.config.SaslConfigs
-import org.apache.kafka.common.config.SslConfigs
-import org.apache.kafka.common.serialization.StringDeserializer
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.context.annotation.Primary
 import org.springframework.web.bind.annotation.GetMapping
 import org.springframework.web.bind.annotation.PathVariable
 import org.springframework.web.bind.annotation.RestController
@@ -23,9 +19,7 @@ import org.springframework.web.reactive.socket.WebSocketHandler
 import org.springframework.web.reactive.socket.WebSocketSession
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter
 import org.w3c.dom.Document
-import reactor.kafka.receiver.KafkaReceiver
-import reactor.kafka.receiver.ReceiverOptions
-
+import java.net.URL
 
 @SpringBootApplication
 @RestController
@@ -43,41 +37,25 @@ class WebApp {
 
 }
 
-data class KafkaConfig(val bootstrapServers: String, val username: String? = null, val password: String? = null) {
-    private val maybeAuthProps = username?.let { u ->
-        password?.let { p ->
-            mapOf(
-                SaslConfigs.SASL_MECHANISM to "PLAIN",
-                SaslConfigs.SASL_JAAS_CONFIG to "org.apache.kafka.common.security.plain.PlainLoginModule required username='$u' password='$p';",
-                SslConfigs.SSL_ENDPOINT_IDENTIFICATION_ALGORITHM_CONFIG to "https",
-                CommonClientConfigs.SECURITY_PROTOCOL_CONFIG to "SASL_SSL",
-            )
-        }
-    }.orEmpty()
-
-    val props = mapOf(
-        ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG to bootstrapServers,
-    ) + maybeAuthProps
-}
 
 @Configuration
 class KafkaConfigFactory {
 
     @Bean
-    @ConditionalOnProperty(name = ["kafka.bootstrap.servers"])
-    fun kafkaConfig(@Value("\${kafka.bootstrap.servers}") bootstrapServers: String): KafkaConfig {
-        return KafkaConfig(bootstrapServers)
-    }
+    @ConditionalOnProperty(name = ["ksqldb.endpoint", "ksqldb.username", "ksqldb.password"])
+    fun ksqlReactorClient(
+        @Value("\${ksqldb.endpoint}") ksqldbEndpoint: URL,
+        @Value("\${ksqldb.username}") ksqldbUsername: String,
+        @Value("\${ksqldb.password}") ksqldbPassword: String,
+    ): ReactorClient {
+        val options = ClientOptions.create()
+            .setHost(ksqldbEndpoint.host)
+            .setPort(ksqldbEndpoint.port)
+            .setUseTls(true)
+            .setUseAlpn(true)
+            .setBasicAuthCredentials(ksqldbUsername, ksqldbPassword)
 
-    @Bean
-    @Primary
-    @ConditionalOnProperty(name = ["kafka.bootstrap.servers", "kafka.username", "kafka.password"])
-    fun kafkaConfigWithAuth(
-        @Value("\${kafka.bootstrap.servers}") bootstrapServers: String,
-        @Value("\${kafka.username}") username: String?,
-        @Value("\${kafka.password}") password: String?
-    ): KafkaConfig {
-        return KafkaConfig(bootstrapServers, username, password)
+        return ReactorClient.fromOptions(options)
     }
 
 }
@@ -86,52 +64,30 @@ class KafkaConfigFactory {
 class WebSocketConfig {
 
     @Bean
-    fun simpleUrlHandlerMapping(kafkaConfig: KafkaConfig): SimpleUrlHandlerMapping {
+    fun simpleUrlHandlerMapping(reactorClient: ReactorClient): SimpleUrlHandlerMapping {
         return SimpleUrlHandlerMapping(mapOf(
-            "/total" to totalFavorites(kafkaConfig),
-            "/langs" to langs(kafkaConfig),
+            "/total" to totalFavorites(reactorClient),
+            "/langs" to langs(reactorClient),
         ), 0)
     }
 
-    fun totalFavorites(kafkaConfig: KafkaConfig): WebSocketHandler {
 
-        val props = mapOf(
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.GROUP_ID_CONFIG to "group",
-        ) + kafkaConfig.props
-
+    fun totalFavorites(reactorClient: ReactorClient): WebSocketHandler {
         return WebSocketHandler { session: WebSocketSession ->
-            val receiverOptions = ReceiverOptions.create<String, String>(props)
-                .consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id)
-                .subscription(listOf("total"))
-
-            val kafkaMessages = KafkaReceiver.create(receiverOptions).receive()
-
-            val webSocketMessages = kafkaMessages.map { session.textMessage(it.value()) }
-
+            val kafkaMessages = reactorClient.streamQuery("select * from STACKOVERFLOW EMIT CHANGES;")
+            val webSocketMessages = kafkaMessages.map { session.textMessage(it.getInteger("FAVORITE_COUNT").toString()) }
             session.send(webSocketMessages)
         }
     }
 
-
-    fun langs(kafkaConfig: KafkaConfig): WebSocketHandler {
-
-        val props = mapOf(
-            ConsumerConfig.KEY_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.VALUE_DESERIALIZER_CLASS_CONFIG to StringDeserializer::class.java,
-            ConsumerConfig.GROUP_ID_CONFIG to "group",
-        ) + kafkaConfig.props
-
+    fun langs(reactorClient: ReactorClient): WebSocketHandler {
         return WebSocketHandler { session: WebSocketSession ->
-            val receiverOptions = ReceiverOptions.create<String, String>(props)
-                .consumerProperty(ConsumerConfig.CLIENT_ID_CONFIG, session.id)
-                .subscription(listOf("langs"))
-
-            val kafkaMessages = KafkaReceiver.create(receiverOptions).receive()
-
-            val webSocketMessages = kafkaMessages.map { session.textMessage("${it.key()}:${it.value()}") }
-
+            val kafkaMessages = reactorClient.streamQuery("select * from STACKOVERFLOW EMIT CHANGES;")
+            val webSocketMessages = kafkaMessages.map { message ->
+                val lang = "java"
+                val num = 3
+                session.textMessage("$lang:$num")
+            }
             session.send(webSocketMessages)
         }
     }

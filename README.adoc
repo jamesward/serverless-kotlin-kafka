@@ -51,25 +51,21 @@ docker run -it \
 
 === Dev (TestContainer Kafka):
 
+TODO
+
 [source,shell script]
 ----
 ./gradlew :web-ui:bootRun
 ----
 
-.send a test message
-[source,shell script]
-----
-docker exec -it kafka bash -c "echo \"567\" | kafka-console-producer --topic total --broker-list localhost:9092"
-docker exec -it kafka bash -c "echo \"java:3\" | kafka-console-producer --topic langs --broker-list localhost:9092 --property parse.key=true --property key.separator=:"
-----
 
 === Prod (External Kafka):
 
 [source,shell script]
 ----
-export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVERS
-export KAFKA_USERNAME=YOUR_CCLOUD_KEY
-export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
+export KSQLDB_ENDPOINT=YOUR_KSQLDB_ENDPOINT
+export KSQLDB_USERNAME=YOUR_KSQLDB_USERNAME
+export KSQLDB_PASSWORD=YOUR_KSQLDB_PASSWORD
 
 ./gradlew :web-ui:run
 ----
@@ -81,9 +77,9 @@ export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
 
 # using env vars from above
 docker run -it \
-  -eKAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS \
-  -eKAFKA_USERNAME=$KAFKA_USERNAME \
-  -eKAFKA_PASSWORD=$KAFKA_PASSWORD \
+  -eKSQLDB_ENDPOINT=$KSQLDB_ENDPOINT \
+  -eKSQLDB_USERNAME=$KSQLDB_USERNAME \
+  -eKSQLDB_PASSWORD=$KSQLDB_PASSWORD \
   skk-web-ui
 ----
 

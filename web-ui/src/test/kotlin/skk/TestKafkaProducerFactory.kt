@@ -9,6 +9,7 @@ import org.testcontainers.utility.DockerImageName
 import javax.annotation.PreDestroy
 
 
+/*
 @Component
 class TestKafkaContainer : KafkaContainer(DockerImageName.parse("confluentinc/cp-kafka:6.1.0")) {
 
@@ -34,3 +35,5 @@ class TestKafkaReceiverOptions {
     }
 
 }
+
+ */
