@@ -2,6 +2,8 @@ package skk
 
 import io.confluent.developer.ksqldb.reactor.ReactorClient
 import io.confluent.ksql.api.client.ClientOptions
+import kotlinx.coroutines.reactive.awaitFirst
+import kotlinx.coroutines.reactive.awaitFirstOrNull
 import kotlinx.html.*
 import kotlinx.html.dom.createHTMLDocument
 import kotlinx.html.dom.serialize
@@ -23,11 +25,18 @@ import java.net.URL
 
 @SpringBootApplication
 @RestController
-class WebApp {
+class WebApp(val reactorClient: ReactorClient) {
 
     @GetMapping("/")
     fun index(): String {
         return Html.index.serialize(true)
+    }
+
+    @GetMapping("total")
+    suspend fun total() = run {
+        reactorClient.executeQuery("SELECT * FROM TOTALS WHERE ONE = 1;").map { rows ->
+            rows.firstOrNull()?.getLong("TOTAL")
+        }.awaitFirstOrNull()
     }
 
     @GetMapping("/{name}")
@@ -55,7 +64,18 @@ class KafkaConfigFactory {
             .setUseAlpn(true)
             .setBasicAuthCredentials(ksqldbUsername, ksqldbPassword)
 
-        return ReactorClient.fromOptions(options)
+        val reactorClient = ReactorClient.fromOptions(options)
+
+        val stackoverflowStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');"
+        reactorClient.executeStatement(stackoverflowStream).block()
+
+        val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
+        reactorClient.executeStatement(stackoverflowAllStream).block()
+
+        val stackoverflowTotalsTable = "CREATE TABLE IF NOT EXISTS TOTALS AS SELECT ONE, SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;"
+        reactorClient.executeStatement(stackoverflowTotalsTable, mapOf("auto.offset.reset" to "earliest")).block()
+
+        return reactorClient
     }
 
 }
@@ -65,25 +85,9 @@ class WebSocketConfig {
 
     @Bean
     fun simpleUrlHandlerMapping(reactorClient: ReactorClient): SimpleUrlHandlerMapping {
-        val stackoverflowStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');"
-        reactorClient.executeStatement(stackoverflowStream).block()
-
-        val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
-        reactorClient.executeStatement(stackoverflowAllStream).block()
-
         return SimpleUrlHandlerMapping(mapOf(
-            "/total" to totalFavorites(reactorClient),
             "/langs" to langs(reactorClient),
         ), 0)
-    }
-
-
-    fun totalFavorites(reactorClient: ReactorClient): WebSocketHandler {
-        return WebSocketHandler { session: WebSocketSession ->
-            val kafkaMessages = reactorClient.streamQuery("SELECT SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;", mapOf("auto.offset.reset" to "earliest"))
-            val webSocketMessages = kafkaMessages.map { session.textMessage(it.getLong("TOTAL").toString()) }
-            session.send(webSocketMessages)
-        }
     }
 
     fun langs(reactorClient: ReactorClient): WebSocketHandler {
@@ -97,7 +101,6 @@ class WebSocketConfig {
             session.send(webSocketMessages)
         }
     }
-
 
     @Bean
     fun webSocketHandlerAdapter(): WebSocketHandlerAdapter {

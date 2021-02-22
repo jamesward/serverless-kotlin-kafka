@@ -1,22 +1,16 @@
 const wsProto = (window.location.protocol === 'https:') ? 'wss:' : 'ws:';
 const wsBase = `${wsProto}//${window.location.hostname}:${window.location.port}`;
 
-function totalWS() {
-    let ws = new WebSocket(`${wsBase}/total`);
-
-    ws.onmessage = function(event) {
-        const template = document.getElementById('total-template');
-        const total = document.importNode(template.content, true);
-        const content = total.firstChild.textContent.replace('{{total}}', event.data);
-        document.getElementById('total').innerHTML = content;
-    }
-
-    ws.onclose = function() {
-        window.setTimeout(() => { ws = totalWS() }, 500);
-    }
-}
-
-totalWS();
+window.addEventListener('load', () => {
+    fetch('/total')
+        .then(response => response.text())
+        .then(body => {
+            const template = document.getElementById('total-template');
+            const total = document.importNode(template.content, true);
+            const content = total.firstChild.textContent.replace('{{total}}', body);
+            document.getElementById('total').innerHTML = content;
+        });
+});
 
 
 function langsWS() {

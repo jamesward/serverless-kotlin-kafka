@@ -17,10 +17,10 @@ dependencies {
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
     implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
-    implementation("io.projectreactor.kafka:reactor-kafka")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     implementation("com.github.gAmUssA:reactor-ksqldb:e81f4a7fc0")
