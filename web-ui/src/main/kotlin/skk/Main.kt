@@ -65,6 +65,10 @@ class WebSocketConfig {
 
     @Bean
     fun simpleUrlHandlerMapping(reactorClient: ReactorClient): SimpleUrlHandlerMapping {
+        val sql = ("CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');")
+
+        reactorClient.executeStatement(sql).block()
+
         return SimpleUrlHandlerMapping(mapOf(
             "/total" to totalFavorites(reactorClient),
             "/langs" to langs(reactorClient),
