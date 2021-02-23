@@ -7,6 +7,7 @@ import kotlinx.html.dom.serialize
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty
+import org.springframework.boot.context.event.ApplicationReadyEvent
 import org.springframework.boot.runApplication
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
@@ -18,9 +19,14 @@ import org.springframework.web.reactive.socket.WebSocketHandler
 import org.springframework.web.reactive.socket.WebSocketSession
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter
 import java.net.URL
+import org.springframework.boot.context.properties.EnableConfigurationProperties
+import org.springframework.context.event.EventListener
+import org.springframework.stereotype.Component
+
 
 @SpringBootApplication
 @RestController
+@EnableConfigurationProperties(KafkaTopicConfig::class)
 class WebApp(val reactorClient: ReactorClient) {
 
     @GetMapping("/")
@@ -30,14 +36,53 @@ class WebApp(val reactorClient: ReactorClient) {
 
     @GetMapping("/total")
     suspend fun total() = run {
-        reactorClient.executeQuery("SELECT * FROM TOTALS WHERE ONE = 1;").map { rows ->
-            rows.firstOrNull()?.getLong("TOTAL")
-        }.awaitFirstOrNull()
+        val rows = reactorClient.executeQuery("SELECT * FROM TOTALS WHERE ONE = 1;").awaitFirstOrNull()
+        rows?.firstOrNull()?.getLong("TOTAL") ?: 0L
     }
 
     @GetMapping("/{name}")
     fun lang(@PathVariable name: String): String {
         return Html.lang(name).serialize(true)
+    }
+
+}
+
+@Component
+class KsqldbSetup(val reactorClient: ReactorClient, val kafkaTopicConfig: KafkaTopicConfig) {
+
+    // possible race
+    @EventListener(ApplicationReadyEvent::class)
+    fun initialize() {
+        val stackoverflowStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='${kafkaTopicConfig.name}', VALUE_FORMAT='JSON_SR');"
+        reactorClient.executeStatement(stackoverflowStream).block()
+
+        val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
+        reactorClient.executeStatement(stackoverflowAllStream).block()
+
+        val stackoverflowExplodedStream = """
+            CREATE STREAM IF NOT EXISTS TAGS AS
+              SELECT
+                TITLE, BODY, URL, VIEW_COUNT, FAVORITE_COUNT, EXPLODE(STACKOVERFLOW.TAGS) TAG
+              FROM
+                STACKOVERFLOW
+              EMIT CHANGES;
+        """.trimIndent()
+        reactorClient.executeStatement(stackoverflowExplodedStream).block()
+
+        val tagsQuestionsTable = """
+            CREATE TABLE IF NOT EXISTS TAGS_QUESTIONS AS
+              SELECT
+                TAG,
+                COUNT(*) QUESTION_COUNT
+              FROM
+                TAGS
+              GROUP BY TAG
+              EMIT CHANGES;
+        """.trimIndent()
+        reactorClient.executeStatement(tagsQuestionsTable).block()
+
+        val stackoverflowTotalsTable = "CREATE TABLE IF NOT EXISTS TOTALS AS SELECT ONE, SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;"
+        reactorClient.executeStatement(stackoverflowTotalsTable, mapOf("auto.offset.reset" to "earliest")).block()
     }
 
 }
@@ -60,40 +105,7 @@ class KafkaConfigFactory {
             .setUseAlpn(true)
             .setBasicAuthCredentials(ksqldbUsername, ksqldbPassword)
 
-        val reactorClient = ReactorClient.fromOptions(options)
-
-        val stackoverflowStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW WITH (KAFKA_TOPIC='mytopic', VALUE_FORMAT='JSON_SR');"
-        reactorClient.executeStatement(stackoverflowStream).block()
-
-        val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
-        reactorClient.executeStatement(stackoverflowAllStream).block()
-
-        val stackoverflowExplodedStream = """
-            CREATE STREAM IF NOT EXISTS TAGS AS
-              SELECT
-                TITLE, BODY, URL, VIEW_COUNT, FAVORITE_COUNT, EXPLODE(STACKOVERFLOW.TAGS) TAG
-              FROM
-                STACKOVERFLOW
-            EMIT CHANGES;
-        """.trimIndent()
-        reactorClient.executeStatement(stackoverflowExplodedStream).block()
-
-        val tagsQuestionsTable = """
-            CREATE TABLE IF NOT EXISTS TAGS_QUESTIONS AS
-              SELECT
-                TAG,
-                COUNT(*) QUESTION_COUNT
-              FROM
-                TAGS
-              GROUP BY TAG
-              EMIT CHANGES;
-        """.trimIndent()
-        reactorClient.executeStatement(tagsQuestionsTable).block()
-
-        val stackoverflowTotalsTable = "CREATE TABLE IF NOT EXISTS TOTALS AS SELECT ONE, SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;"
-        reactorClient.executeStatement(stackoverflowTotalsTable, mapOf("auto.offset.reset" to "earliest")).block()
-
-        return reactorClient
+        return ReactorClient.fromOptions(options)
     }
 
 }

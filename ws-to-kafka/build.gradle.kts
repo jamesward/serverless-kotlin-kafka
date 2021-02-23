@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    id("org.springframework.boot") version "2.4.2"
-    id("io.spring.dependency-management") version "1.0.11.RELEASE"
+    id("org.springframework.boot")
+    id("io.spring.dependency-management")
     kotlin("jvm")
     kotlin("plugin.spring")
 }
@@ -14,17 +14,13 @@ java {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8")
     implementation("io.confluent:kafka-json-schema-serializer:6.0.0")
-    // transitive from 👆
-    //implementation("com.github.everit-org.json-schema:org.everit.json.schema:1.12.1")
 
-    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
-    implementation("org.springframework.kafka:spring-kafka")
-    implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
     testImplementation("org.testcontainers:kafka:1.15.1")
 }

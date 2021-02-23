@@ -2,8 +2,8 @@ import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 plugins {
     application
-    id("org.springframework.boot") version "2.4.2"
-    id("io.spring.dependency-management") version "1.0.11.RELEASE"
+    id("org.springframework.boot")
+    id("io.spring.dependency-management")
     kotlin("jvm")
     kotlin("plugin.spring")
 }
@@ -14,12 +14,12 @@ java {
 }
 
 dependencies {
+    implementation(project(":common"))
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8:1.4.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-jdk8")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-reactor")
 
-    implementation("org.springframework.boot:spring-boot-starter")
     implementation("org.springframework.boot:spring-boot-starter-webflux")
     implementation("com.fasterxml.jackson.module:jackson-module-kotlin")
 
@@ -32,6 +32,8 @@ dependencies {
     implementation("org.jetbrains.kotlinx:kotlinx-html-jvm:0.7.2")
 
     testImplementation("org.testcontainers:kafka:1.15.1")
+    testImplementation("io.confluent:kafka-json-schema-serializer:6.0.0")
+    testImplementation("com.github.gAmUssA:testcontainers-java-module-confluent-platform:master-SNAPSHOT")
     developmentOnly("org.springframework.boot:spring-boot-devtools")
 }
 
@@ -44,6 +46,7 @@ tasks.withType<KotlinCompile> {
 
 tasks.withType<org.springframework.boot.gradle.tasks.run.BootRun> {
     dependsOn("testClasses")
+    args("--spring.profiles.active=dev")
     classpath += sourceSets["test"].runtimeClasspath
 }
 

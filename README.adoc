@@ -51,12 +51,17 @@ docker run -it \
 
 === Dev (TestContainer Kafka):
 
-TODO
-
 [source,shell script]
 ----
 ./gradlew :web-ui:bootRun
 ----
+
+View the Web UI: http://localhost:8080
+
+.send events
+---
+TODO
+---
 
 
 === Prod (External Kafka):
