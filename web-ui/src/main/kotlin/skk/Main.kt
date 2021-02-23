@@ -2,10 +2,7 @@ package skk
 
 import io.confluent.developer.ksqldb.reactor.ReactorClient
 import io.confluent.ksql.api.client.ClientOptions
-import kotlinx.coroutines.reactive.awaitFirst
 import kotlinx.coroutines.reactive.awaitFirstOrNull
-import kotlinx.html.*
-import kotlinx.html.dom.createHTMLDocument
 import kotlinx.html.dom.serialize
 import org.springframework.beans.factory.annotation.Value
 import org.springframework.boot.autoconfigure.SpringBootApplication
@@ -20,7 +17,6 @@ import org.springframework.web.reactive.handler.SimpleUrlHandlerMapping
 import org.springframework.web.reactive.socket.WebSocketHandler
 import org.springframework.web.reactive.socket.WebSocketSession
 import org.springframework.web.reactive.socket.server.support.WebSocketHandlerAdapter
-import org.w3c.dom.Document
 import java.net.URL
 
 @SpringBootApplication
@@ -32,7 +28,7 @@ class WebApp(val reactorClient: ReactorClient) {
         return Html.index.serialize(true)
     }
 
-    @GetMapping("total")
+    @GetMapping("/total")
     suspend fun total() = run {
         reactorClient.executeQuery("SELECT * FROM TOTALS WHERE ONE = 1;").map { rows ->
             rows.firstOrNull()?.getLong("TOTAL")
@@ -72,6 +68,28 @@ class KafkaConfigFactory {
         val stackoverflowAllStream = "CREATE STREAM IF NOT EXISTS STACKOVERFLOW_ALL AS SELECT 1 AS ONE, FAVORITE_COUNT FROM STACKOVERFLOW;"
         reactorClient.executeStatement(stackoverflowAllStream).block()
 
+        val stackoverflowExplodedStream = """
+            CREATE STREAM IF NOT EXISTS TAGS AS
+              SELECT
+                TITLE, BODY, URL, VIEW_COUNT, FAVORITE_COUNT, EXPLODE(STACKOVERFLOW.TAGS) TAG
+              FROM
+                STACKOVERFLOW
+            EMIT CHANGES;
+        """.trimIndent()
+        reactorClient.executeStatement(stackoverflowExplodedStream).block()
+
+        val tagsQuestionsTable = """
+            CREATE TABLE IF NOT EXISTS TAGS_QUESTIONS AS
+              SELECT
+                TAG,
+                COUNT(*) QUESTION_COUNT
+              FROM
+                TAGS
+              GROUP BY TAG
+              EMIT CHANGES;
+        """.trimIndent()
+        reactorClient.executeStatement(tagsQuestionsTable).block()
+
         val stackoverflowTotalsTable = "CREATE TABLE IF NOT EXISTS TOTALS AS SELECT ONE, SUM(FAVORITE_COUNT) AS TOTAL FROM STACKOVERFLOW_ALL GROUP BY ONE EMIT CHANGES;"
         reactorClient.executeStatement(stackoverflowTotalsTable, mapOf("auto.offset.reset" to "earliest")).block()
 
@@ -92,10 +110,12 @@ class WebSocketConfig {
 
     fun langs(reactorClient: ReactorClient): WebSocketHandler {
         return WebSocketHandler { session: WebSocketSession ->
-            val kafkaMessages = reactorClient.streamQuery("select * from STACKOVERFLOW EMIT CHANGES;")
+            val query = "SELECT * FROM TAGS_QUESTIONS EMIT CHANGES;"
+
+            val kafkaMessages = reactorClient.streamQuery(query)
             val webSocketMessages = kafkaMessages.map { message ->
-                val lang = "java"
-                val num = 3
+                val lang = message.getString("TAG")
+                val num = message.getInteger("QUESTION_COUNT")
                 session.textMessage("$lang:$num")
             }
             session.send(webSocketMessages)
@@ -106,95 +126,6 @@ class WebSocketConfig {
     fun webSocketHandlerAdapter(): WebSocketHandlerAdapter {
         return WebSocketHandlerAdapter()
     }
-
-}
-
-
-object Html {
-
-    class TEMPLATE(consumer: TagConsumer<*>) :
-        HTMLTag("template", consumer, emptyMap(),
-            inlineTag = true,
-            emptyTag = false), HtmlInlineTag
-
-    fun FlowContent.template(block: TEMPLATE.() -> Unit = {}) {
-        TEMPLATE(consumer).visit(block)
-    }
-
-    fun TEMPLATE.li(classes : String? = null, block : LI.() -> Unit = {}) {
-        LI(attributesMapOf("class", classes), consumer).visit(block)
-    }
-
-    fun page(js: String, content: FlowContent.() -> Unit = {}): HTML.() -> Unit = {
-        head {
-            link("/webjars/bootstrap/4.5.3/css/bootstrap.min.css", LinkRel.stylesheet)
-            link("/assets/index.css", LinkRel.stylesheet)
-            script(ScriptType.textJavaScript) {
-                src = "/assets/$js"
-            }
-        }
-        body {
-            nav("navbar fixed-top navbar-light bg-light") {
-                a("/", classes = "navbar-brand") {
-                    +"Serverless Kotlin Kafka"
-                }
-            }
-
-            div("container-fluid") {
-                content()
-            }
-        }
-    }
-
-    val indexHTML = page("index.js") {
-        template {
-            id = "total-template"
-            +"Total Favorites: {{total}}"
-        }
-
-        div {
-            id = "total"
-        }
-
-        ul {
-            id = "recent-questions"
-
-            template {
-                id = "recent-questions-template"
-
-                li {
-                    id = "lang-{{lang}}"
-
-                    a("{{lang}}") {
-                        +"{{lang}} = {{num}}"
-                    }
-                }
-            }
-        }
-    }
-
-    val index: Document = createHTMLDocument().html(block = indexHTML)
-
-    fun langHTML(name: String) = page("lang.js") {
-        +"Questions For `$name`"
-
-        ul {
-            id = "questions"
-
-            template {
-                id = "question-template"
-
-                li {
-                    a("{{url}}") {
-                        +"{{title}}"
-                    }
-                    +" (favorites: {{favorite_count}}, views: {{view_count}})"
-                }
-            }
-        }
-    }
-
-    fun lang(name: String): Document = createHTMLDocument().html(block = langHTML(name))
 
 }
 
