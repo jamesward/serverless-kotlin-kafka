@@ -47,6 +47,33 @@ docker run -it \
 ----
 
 
+== ksqldb-setup
+
+=== Prod
+
+[source,shell script]
+----
+export KSQLDB_ENDPOINT=YOUR_KSQLDB_ENDPOINT
+export KSQLDB_USERNAME=YOUR_KSQLDB_USERNAME
+export KSQLDB_PASSWORD=YOUR_KSQLDB_PASSWORD
+
+./gradlew :ksqldb-setup:run
+----
+
+.containerize & run
+[source,shell script]
+----
+./gradlew :ksqldb-setup:bootBuildImage --imageName=skk-ksqldb-setup
+
+# using env vars from above
+docker run -it \
+  -eKSQLDB_ENDPOINT=$KSQLDB_ENDPOINT \
+  -eKSQLDB_USERNAME=$KSQLDB_USERNAME \
+  -eKSQLDB_PASSWORD=$KSQLDB_PASSWORD \
+  skk-ksqldb-setup
+----
+
+
 == web-ui
 
 === Dev (TestContainer Kafka):
@@ -58,19 +85,10 @@ docker run -it \
 
 View the Web UI: http://localhost:8080
 
-.send events
----
-TODO
----
-
-
 === Prod (External Kafka):
 
 [source,shell script]
 ----
-export KAFKA_BOOTSTRAP_SERVERS=YOUR_BOOTSTRAP_SERVERS
-export KAFKA_USERNAME=YOUR_CCLOUD_KEY
-export KAFKA_PASSWORD=YOUR_CCLOUD_PASSWORD
 export KSQLDB_ENDPOINT=YOUR_KSQLDB_ENDPOINT
 export KSQLDB_USERNAME=YOUR_KSQLDB_USERNAME
 export KSQLDB_PASSWORD=YOUR_KSQLDB_PASSWORD
@@ -85,20 +103,8 @@ export KSQLDB_PASSWORD=YOUR_KSQLDB_PASSWORD
 
 # using env vars from above
 docker run -it \
-  -eKAFKA_BOOTSTRAP_SERVERS=$KAFKA_BOOTSTRAP_SERVERS \
-  -eKAFKA_USERNAME=$KAFKA_USERNAME \
-  -eKAFKA_PASSWORD=$KAFKA_PASSWORD \
   -eKSQLDB_ENDPOINT=$KSQLDB_ENDPOINT \
   -eKSQLDB_USERNAME=$KSQLDB_USERNAME \
   -eKSQLDB_PASSWORD=$KSQLDB_PASSWORD \
   skk-web-ui
 ----
-
-== todo
-
-* schema stuff
-** json schema used
-* parse tags
-* ksqldb stateful (total favorites)
-* ksql transform (language groupings)
-* web event consumer (websocket stream + pull query)

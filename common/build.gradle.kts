@@ -7,23 +7,28 @@ plugins {
 }
 
 java {
-    sourceCompatibility = JavaVersion.VERSION_11
-    targetCompatibility = JavaVersion.VERSION_11
+    sourceCompatibility = JavaVersion.VERSION_1_8
+    targetCompatibility = JavaVersion.VERSION_1_8
 }
 
 dependencies {
     implementation(kotlin("reflect"))
     implementation(kotlin("stdlib-jdk8"))
-    implementation("org.springframework.boot:spring-boot")
+
+    api("org.springframework.boot:spring-boot-autoconfigure")
     api("com.fasterxml.jackson.module:jackson-module-kotlin")
-    api("org.springframework.kafka:spring-kafka")
+
+    api("io.confluent.ksql:ksqldb-api-client:6.1.0") {
+        exclude("org.slf4j", "slf4j-log4j12")
+    }
+
     annotationProcessor("org.springframework.boot:spring-boot-configuration-processor")
 }
 
 tasks.withType<org.jetbrains.kotlin.gradle.tasks.KotlinCompile> {
     kotlinOptions {
         freeCompilerArgs = listOf("-Xjsr305=strict")
-        jvmTarget = JavaVersion.VERSION_11.toString()
+        jvmTarget = JavaVersion.VERSION_1_8.toString()
     }
 }
 
