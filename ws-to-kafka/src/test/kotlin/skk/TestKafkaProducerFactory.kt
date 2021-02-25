@@ -1,17 +1,8 @@
 package skk
 
-import io.confluent.kafka.serializers.json.KafkaJsonSchemaSerializer
-import org.apache.kafka.clients.CommonClientConfigs.BOOTSTRAP_SERVERS_CONFIG
-import org.apache.kafka.clients.producer.ProducerConfig
-import org.apache.kafka.common.serialization.StringSerializer
-import org.springframework.boot.autoconfigure.kafka.KafkaProperties
 import org.springframework.context.annotation.Bean
 import org.springframework.context.annotation.Configuration
-import org.springframework.kafka.annotation.EnableKafka
-import org.springframework.kafka.core.DefaultKafkaProducerFactory
-import org.springframework.kafka.core.KafkaAdmin
-import org.springframework.kafka.core.KafkaTemplate
-import org.springframework.kafka.core.ProducerFactory
+import org.springframework.context.annotation.Primary
 import org.springframework.stereotype.Component
 import org.testcontainers.containers.GenericContainer
 import org.testcontainers.containers.KafkaContainer
@@ -76,30 +67,22 @@ class TestSchemaRegistryContainer(testKafkaContainer: TestKafkaContainer) : Gene
 }
 
 @Configuration
-@EnableKafka
 class TestKafkaProducerFactory {
 
     @Bean
-    fun producerFactory(testKafkaContainer: TestKafkaContainer, testSchemaRegistryContainer: TestSchemaRegistryContainer, kafkaProperties: KafkaProperties): ProducerFactory<String, Question> {
-        // todo: maybe reuse application.properties for serializers but not auth stuff?
-        val config = mapOf(
-            ProducerConfig.BOOTSTRAP_SERVERS_CONFIG to testKafkaContainer.bootstrapServers,
-            ProducerConfig.KEY_SERIALIZER_CLASS_CONFIG to StringSerializer::class.java,
-            ProducerConfig.VALUE_SERIALIZER_CLASS_CONFIG to KafkaJsonSchemaSerializer::class.java,
-            "schema.registry.url" to "http://${testSchemaRegistryContainer.host}:${testSchemaRegistryContainer.firstMappedPort}",
-        )
-        return DefaultKafkaProducerFactory(config)
+    fun kafkaConfig(testKafkaContainer: TestKafkaContainer): KafkaConfig {
+        return KafkaConfig(testKafkaContainer.bootstrapServers)
     }
 
     @Bean
-    fun kafkaTemplate(testKafkaContainer: TestKafkaContainer, testSchemaRegistryContainer: TestSchemaRegistryContainer, kafkaProperties: KafkaProperties): KafkaTemplate<String, Question> {
-        return KafkaTemplate(producerFactory(testKafkaContainer, testSchemaRegistryContainer, kafkaProperties))
+    fun schemaRegistryConfig(testSchemaRegistryContainer: TestSchemaRegistryContainer): SchemaRegistryConfig {
+        return SchemaRegistryConfig("http://${testSchemaRegistryContainer.host}:${testSchemaRegistryContainer.firstMappedPort}")
     }
 
     @Bean
-    fun kafkaAdmin(container: TestKafkaContainer): KafkaAdmin {
-        val config = mapOf(BOOTSTRAP_SERVERS_CONFIG to container.bootstrapServers)
-        return KafkaAdmin(config)
+    @Primary
+    fun kafkaTopicConfig(): KafkaTopicConfig {
+        return KafkaTopicConfig(1, 3, "mytopic")
     }
 
 }

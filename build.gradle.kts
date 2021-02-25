@@ -10,9 +10,6 @@ allprojects {
     mavenCentral()
     jcenter()
     maven("https://packages.confluent.io/maven")
-    maven("https://ksqldb-maven.s3.amazonaws.com/maven")
-    maven("https://jenkins-confluent-packages-beta-maven.s3.amazonaws.com/6.2.0-beta201122193350-cp5/3/maven/")
-    maven("https://jitpack.io")
     maven("https://repository.mulesoft.org/nexus/content/repositories/public/")
   }
 }
