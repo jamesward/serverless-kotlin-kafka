@@ -8,6 +8,14 @@ check-dependency = $(if $(shell command -v $(1)),$(call echo_pass,found $(1)),$(
 
 check-var-defined = $(if $(strip $($1)),,$(error "$1" is not defined))
 
+define print-prompt =
+printf "\e[96m➜ \e[0m"
+endef
+
+define print-header =
+printf "\n%-50s\n" $1 | tr ' ~' '- '
+endef
+
 check-dependencies:
 	@$(call check-dependency,curl)
 	@$(call check-dependency,kubectl)
