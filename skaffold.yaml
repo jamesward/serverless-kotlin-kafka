@@ -1,0 +1,10 @@
+apiVersion: skaffold/v2beta10
+kind: Config
+metadata:
+  name: portable-serverless
+deploy:
+  kubectl:
+    manifests:
+      - ws-to-kafka-app-secret.yaml
+      - ws-to-kafka-app-deployment.yaml
+      # - ksqldb-setup-deployment.yaml

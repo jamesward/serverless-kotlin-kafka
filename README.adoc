@@ -30,6 +30,28 @@ export SCHEMA_REGISTRY_PASSWORD=YOUR_SCHEMA_REGISTRY_PASSWORD
 ./gradlew :ws-to-kafka:run
 ----
 
+==== run on Kubernetes
+
+* provision Kubernetes cluster on GCP
++
+
+[source,bash]
+----
+make create-gke-cluster # <1>
+
+./gradlew :ws-to-kafka:bootBuildImage --imageName=gcr.io/devx-testing/ws-to-kafka && docker push gcr.io/devx-testing/ws-to-kafka  # <2>
+
+envsubst < ws-to-kafka-app-secret-template.yaml | kubectl apply -f - # <3>
+# or
+envsubst < ws-to-kafka-app-secret-template.yaml > ws-to-kafka-app-secret.yaml
+
+skaffold dev  #<4>
+----
+<1> create Kubernetes cluster
+<2> build the image and push to Google Container Registry
+<3> create Kubernetes secret
+<4> deploy app using Skaffold
+
 .containerize & run
 [source,shell script]
 ----
