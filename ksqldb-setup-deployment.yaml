@@ -1,14 +1,12 @@
-apiVersion: apps/v1
-kind: StatefulSet
+apiVersion: batch/v1
+kind: Job
 metadata:
   name: ksqldb-setup
 spec:
-  serviceName: ksqldb-setup
-  podManagementPolicy: Parallel
-  replicas: 1
   selector:
     matchLabels:
       app: ksqldb-setup
+  ttlSecondsAfterFinished: 10
   template:
     metadata:
       labels:
@@ -37,11 +35,4 @@ spec:
             requests:
               memory: 512Mi # 768Mi
               cpu: 500m # 1000m
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: ksqldb-setup
-spec:
-  clusterIP: None
-  
+              

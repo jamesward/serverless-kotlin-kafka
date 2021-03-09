@@ -5,7 +5,7 @@ metadata:
 spec:
   serviceName: ws-to-kafka
   podManagementPolicy: Parallel
-  replicas: 2
+  replicas: 1
   selector:
     matchLabels:
       app: ws-to-kafka
