@@ -1,0 +1,38 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ksqldb-setup
+spec:
+  selector:
+    matchLabels:
+      app: ksqldb-setup
+  ttlSecondsAfterFinished: 10
+  template:
+    metadata:
+      labels:
+        app: ksqldb-setup
+    spec:
+      containers:
+        - name: ksqldb-setup
+          image: gcr.io/devx-testing/ksqldb-setup
+          env:
+            - name: KSQLDB_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_ENDPOINT
+                  name: ccloud-secret
+            - name: KSQLDB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_USERNAME
+                  name: ccloud-secret
+            - name: KSQLDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_PASSWORD
+                  name: ccloud-secret
+          resources:
+            requests:
+              memory: 512Mi # 768Mi
+              cpu: 500m # 1000m
+              

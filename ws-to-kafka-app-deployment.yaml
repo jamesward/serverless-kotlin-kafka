@@ -1,0 +1,77 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: ws-to-kafka
+spec:
+  serviceName: ws-to-kafka
+  podManagementPolicy: Parallel
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ws-to-kafka
+  template:
+    metadata:
+      labels:
+        app: ws-to-kafka
+    spec:
+      containers:
+        - name: ws-to-kafka
+          image: gcr.io/devx-testing/ws-to-kafka
+          env:
+            - name: KAFKA_BOOTSTRAP_SERVERS
+              valueFrom:
+                secretKeyRef:
+                  key: KAFKA_BOOTSTRAP_SERVERS
+                  name: ccloud-secret
+            - name: KAFKA_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: KAFKA_USERNAME
+                  name: ccloud-secret
+            - name: KAFKA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: KAFKA_PASSWORD
+                  name: ccloud-secret
+            - name: SCHEMA_REGISTRY_URL
+              valueFrom:
+                secretKeyRef:
+                  key: SCHEMA_REGISTRY_URL
+                  name: ccloud-secret
+            - name: SCHEMA_REGISTRY_KEY
+              valueFrom:
+                secretKeyRef:
+                  key: SCHEMA_REGISTRY_KEY
+                  name: ccloud-secret
+            - name: SCHEMA_REGISTRY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: SCHEMA_REGISTRY_PASSWORD
+                  name: ccloud-secret
+            - name: KSQLDB_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_ENDPOINT
+                  name: ccloud-secret
+            - name: KSQLDB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_USERNAME
+                  name: ccloud-secret
+            - name: KSQLDB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: KSQLDB_PASSWORD
+                  name: ccloud-secret
+          resources:
+            requests:
+              memory: 512Mi # 768Mi
+              cpu: 500m # 1000m
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ws-to-kafka
+spec:
+  clusterIP: None
+  

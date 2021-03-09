@@ -1,3 +1,6 @@
 /.gradle/
 /.idea/
 build/
+delta_configs/
+stack-configs/
+ws-to-kafka-app-secret.yaml
